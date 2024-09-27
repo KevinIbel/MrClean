@@ -1,5 +1,7 @@
 # MrClean
 
+Implementation currently for Gitlab only.
+
 This repository focuses on cleaning your repository from the stale branches and merge requests on your repository by 
 alerting the user who owns the stale branches on slack via pmxbot.
 

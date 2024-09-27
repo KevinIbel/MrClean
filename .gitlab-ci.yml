@@ -1,0 +1,56 @@
+stages:
+  - build
+  - test
+  - pre
+
+variables:
+  DOCKER_REGISTRY_BASE_URI: # Enter as needed
+  KUBECONFIG: # Enter as needed
+  IMAGE_NAME: # Enter as needed
+
+.rules_template: &global_rules
+  - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    variables:
+      IMAGE_NAME: ${DOCKER_REGISTRY_BASE_URI}/${CI_PROJECT_NAME}:latest
+  - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    variables:
+      IMAGE_NAME: ${DOCKER_REGISTRY_BASE_URI}/${CI_PROJECT_NAME}:${CI_COMMIT_SHORT_SHA}
+  - if: $CI_COMMIT_TAG
+    variables:
+      IMAGE_NAME: ${DOCKER_REGISTRY_BASE_URI}/${CI_PROJECT_NAME}:${CI_COMMIT_TAG}
+
+.not_scheduled: &not_scheduled
+  - if: $CI_PIPELINE_SOURCE == "schedule"
+    when: never
+
+.scheduled_only: &scheduled_only
+  - if: $CI_PIPELINE_SOURCE == "schedule"
+    when: always
+
+# Setup build as needed to your work environment
+build:
+  stage: build
+  interruptible: true
+  rules:
+    - *not_scheduled
+    - *global_rules
+  variables:
+    DOCKER_IMAGE: ${IMAGE_NAME}
+    DOCKER_FILE: Dockerfile
+
+mrclean:
+  stage: pre
+  rules:
+    - *scheduled_only
+  script:
+    - python3 src/gitlab_api.py --ci_project_id ${PROJECT_ID} --ci_default_branch ${DEFAULT_BRANCH}
+
+test:
+  stage: test
+  rules:
+    - *not_scheduled
+    - *global_rules
+  script:
+    - pip install -r requirements.txt
+    - python -m pytest src/tests/
+
